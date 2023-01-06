@@ -1,0 +1,16 @@
+[package]
+name = "howudoin"
+version = "0.1.0"
+authors = ["Kurt Lawrence <https://kurtlawrence.info>"]
+edition = "2021"
+description = "Progress reporting abstraction"
+repository = "https://github.com/kdr-aus/how-u-doin"
+license = "MIT"
+keywords = ["progress", "tui", "abstraction"]
+categories = ["gui"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+flume = "0.10"
+parking_lot = "0.12"
