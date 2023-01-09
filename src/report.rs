@@ -1,6 +1,6 @@
 // ###### PROGRESS #############################################################
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Progress {
     #[cfg_attr(feature = "serde", serde(flatten))]
@@ -13,7 +13,7 @@ pub struct Progress {
 
 // ###### REPORT ###############################################################
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct Report {
@@ -34,7 +34,7 @@ pub struct Report {
 
 // ###### STATE ################################################################
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum State {
     InProgress {
@@ -72,7 +72,7 @@ impl Default for State {
 
 // ###### MESSAGE ##############################################################
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Message {
     pub severity: Severity,

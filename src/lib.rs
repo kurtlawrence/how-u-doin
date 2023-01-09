@@ -1,64 +1,58 @@
+use flume::{Receiver, Sender};
+use report::Progress;
+use std::time::{Duration, Instant};
 
-// pub mod consumers;
+pub mod consumers;
 pub mod report;
-// mod rx;
-// mod tx;
-mod progress;
+mod rx;
+#[cfg(test)]
+mod tests;
+mod tx;
 
-pub type Id = u64;
+pub type Id = usize;
 
+pub use tx::{cancel, cancelled, disable, fetch, init, new, new_root, new_with_parent, reset};
 
-
-// #[derive(Clone)]
-// pub struct ProgressTx(UnboundedSender<Msg>);
-// 
-// pub struct ProgressRx {
-//     rx: UnboundedReceiver<Msg>,
-//     reports: Vec<Option<Report>>,
-//     ids: HashMap<Id, usize>,
-// }
-// 
-// #[derive(Clone)]
-// pub struct Reporter {
-//     tx: ProgressTx,
-//     id: Id,
-// }
-
-// struct Msg {
-//     id: Id,
-//     payload: Payload,
-// }
-
+#[derive(Debug)]
 enum Payload {
-    /// Add a new reporter.
-    AddReport,
+    /// Add a new reporter, optionally under the parent.
+    AddReport(Option<Id>, Sender<Id>),
+    /// Add a new root report.
+    AddRootReport(Sender<Id>),
+    /// Fetch the progress history.
+    Fetch(Sender<Vec<report::Progress>>),
     /// Set the label.
-    SetLabel(String),
+    SetLabel(Id, String),
     /// Set the description.
-    SetDesc(String),
+    SetDesc(Id, String),
     /// Set the progress length. If `None`, this progress is indeterminate.
-    SetLen(Option<u64>),
+    SetLen(Id, Option<u64>),
     /// Set whether to format the length and position as bytes.
-    SetFmtBytes(bool),
+    SetFmtBytes(Id, bool),
     /// Increment the progress position by a number of ticks.
-    Inc(u64),
+    Inc(Id, u64),
     /// Set the progress position.
-    SetPos(u64),
+    SetPos(Id, u64),
+    /// Add an accumulation message.
+    Accum(Id, report::Severity, String),
     /// Reporter has finished, but should be kept displayed.
-    Finish,
+    Finish(Id),
     /// Reporter has finished and should be removed from display.
-    Close,
+    Close(Id),
+    /// Set cancellation flag to true.
+    Cancel,
+    /// Get the cancellation status.
+    Cancelled(Sender<bool>),
+    /// Reset the controller's state.
+    Reset,
 }
 
 pub trait Consume {
-    // fn recv(&mut self, reports: Reports);
+    /// Set the debounce timeout.
+    ///
+    /// Defaults to 50 milliseconds. This is the time waited for before processing new messages.
+    /// Only the **last** message is considered.
+    fn debounce(&self) -> Duration {
+        Duration::from_millis(50)
+    }
 }
-
-// impl<F> Consume for F
-// where
-//     F: FnMut(Reports),
-// {
-//     fn recv(&mut self, reports: Reports) {
-//         self(reports)
-//     }
-// }
