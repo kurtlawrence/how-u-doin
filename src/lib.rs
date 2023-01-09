@@ -1,11 +1,12 @@
 
 // pub mod consumers;
-// mod report;
+pub mod report;
 // mod rx;
 // mod tx;
 mod progress;
 
 pub type Id = u64;
+
 
 
 // #[derive(Clone)]
@@ -23,39 +24,6 @@ pub type Id = u64;
 //     id: Id,
 // }
 
-#[derive(Default, Clone, Debug)]
-pub struct Report {
-    /// The report's label.
-    pub label: String,
-
-    /// The report's description. Leave empty if not used.
-    pub desc: String,
-
-    /// Optional length, if empty report is indeterminate.
-    pub len: Option<u64>,
-
-    /// Current report position.
-    pub pos: u64,
-
-    /// The len/pos should be formatted in bytes.
-    pub bytes: bool,
-
-    /// History of position updates, with timestamps snapshots.
-    pub history: Vec<(std::time::Instant, u64)>,
-
-    /// Report has finished.
-    pub finished: bool,
-}
-
-// pub struct ReportChgs {
-//     pub label: bool,
-//     pub desc: bool,
-//     pub len: bool,
-//     pub pos: bool,
-//     pub bytes: bool,
-//     pub history: bool,
-// }
-// 
 // struct Msg {
 //     id: Id,
 //     payload: Payload,

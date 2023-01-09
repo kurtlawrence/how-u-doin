@@ -1,10 +1,9 @@
-use crate::{Payload, Consume, Report};
+use crate::{Payload, Consume, report::Report};
 use parking_lot::RwLock;
 use flume::{Sender, Receiver, unbounded};
 use std::sync::{Arc, atomic::AtomicUsize};
 
 pub static TX: Tx = Tx::none();
-static PRG: Arc<Vec<Progress>> = Arc::new(Vec::new());
 static ID: AtomicUsize = AtomicUsize::new(0);
 
 pub fn init<C: Consume + Send + 'static>(consumer: C) {

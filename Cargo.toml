@@ -9,8 +9,13 @@ license = "MIT"
 keywords = ["progress", "tui", "abstraction"]
 categories = ["gui"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# See more keys and their definitions at
+# https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+serde = ["dep:serde"]
 
 [dependencies]
 flume = "0.10"
 parking_lot = "0.12"
+serde = { version = "1",features = ["derive"], optional = true }
