@@ -1,4 +1,5 @@
 use crate::*;
+use report::*;
 use indicatif::*;
 use std::{thread::*, time::*};
 
@@ -9,36 +10,29 @@ const MP_STATE_DELAY: Duration = Duration::from_millis(50);
 /// Backended by `indicatif`, this consumer will create a progress bars for each available report.
 /// It provides a simple line interface.
 pub struct TermLine {
-    /// Matches the length of incoming reports vector.
-    bars: Vec<Option<ProgressBar>>,
-    /// Matches the length of incoming reports vector.
-    cache: Vec<Report>,
-
+    debounce: Duration,
+    bars: BTreeMap<Id, ProgressBar>,
     mp: MultiProgress,
-    last_rebuild: Instant,
 }
 
 impl Consume for TermLine {
-    fn recv(&mut self, reports: Reports) {
-        if !self.mp_matches(reports) {
-            self.rebuild_and_spawn_mp(reports);
-        }
-
-        for (idx, report) in reports.iter().enumerate() {
-            if let Some(report) = report {
-                self.process_report(idx, report);
-            }
-        }
+    fn debounce(&self) -> Duration {
+        self.debounce
     }
 }
 
 impl TermLine {
     pub fn new() -> Self {
         Self {
-            bars: Vec::new(),
-            cache: Vec::new(),
+            debounce: Duration::from_millis(50),
             mp: MultiProgress::new(),
-            last_rebuild: Instant::now() - MP_STATE_DELAY,
+        }
+    }
+
+    pub fn with_debounce(debounce: Duration) -> Self {
+        Self {
+            debounce,
+            ..Self::new()
         }
     }
 
@@ -60,11 +54,6 @@ impl TermLine {
         // if < delay since last rebuild, need to delay to allow for MP state to catch up.
         let elapsed = self.last_rebuild.elapsed();
         if elapsed < MP_STATE_DELAY {
-            log::debug!(
-                "sleeping since elapsed {:?} is < than {:?}",
-                elapsed,
-                MP_STATE_DELAY
-            );
             sleep(MP_STATE_DELAY - elapsed);
         }
 

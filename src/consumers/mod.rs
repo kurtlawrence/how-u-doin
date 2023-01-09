@@ -1,8 +1,10 @@
 use super::*;
 
-// mod term_line;
+#[cfg(feature = "termline")]
+mod term_line;
 
-// pub use term_line::TermLine;
+#[cfg(feature = "termline")]
+pub use term_line::TermLine;
 
 /// A consumer that does not do anything.
 ///

@@ -14,8 +14,10 @@ categories = ["gui"]
 
 [features]
 serde = ["dep:serde"]
+termline = ["dep:indicatif"]
 
 [dependencies]
 flume = "0.10"
+indicatif = { version = "0.17", optional = true }
 parking_lot = "0.12"
-serde = { version = "1",features = ["derive"], optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
