@@ -26,8 +26,8 @@ jobs:
           components: rustfmt, clippy
             
     - name: Build
-      run: compile-features.sh
+      run: ./compile-features.sh
       
     - name: Run tests
-      run: test.sh
+      run: ./test.sh
     
