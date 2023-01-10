@@ -109,7 +109,7 @@ fn tx_api() {
     let a = new().label("a").set_len(100).fmt_as_bytes(true);
     a.desc("foo bar");
 
-    a.inc().inc().inc_by(4_u8).add_error("errrr");
+    a.inc().inc().inc_by(4_u8).add_err("errrr");
 
     let f = reset_rems(fetch().unwrap());
     assert_eq!(

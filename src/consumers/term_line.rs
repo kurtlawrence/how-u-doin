@@ -35,6 +35,7 @@ impl Consume for TermLine {
 }
 
 impl TermLine {
+    /// Create a new, default, `TermLine`.
     pub fn new() -> Self {
         Self {
             debounce: Duration::from_millis(50),
@@ -43,6 +44,7 @@ impl TermLine {
         }
     }
 
+    /// Create a new `TermLine` with the debounce duration.
     pub fn with_debounce(debounce: Duration) -> Self {
         Self {
             debounce,
@@ -50,7 +52,7 @@ impl TermLine {
         }
     }
 
-    pub fn add_bar(&mut self, id: Id, parent: Option<Id>) -> ProgressBar {
+    fn add_bar(&mut self, id: Id, parent: Option<Id>) -> ProgressBar {
         match parent.and_then(|x| self.bars.get(&x)).cloned() {
             None => {
                 let bar = self.mp.add(pb());
@@ -72,7 +74,7 @@ impl Default for TermLine {
     }
 }
 
-pub fn update_bar(pb: &ProgressBar, rpt: &Report) {
+fn update_bar(pb: &ProgressBar, rpt: &Report) {
     let Report {
         label,
         desc,

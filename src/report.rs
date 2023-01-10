@@ -1,13 +1,21 @@
+//! The public structures of progress reports.
+//!
+//! The data structures are serialisable with the `serde` feature.
 use std::fmt;
 
 // ###### PROGRESS #############################################################
 
+/// A progress node.
+///
+/// This structure is serialisable with the `serde` feature.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Progress {
+    /// The report status.
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub report: Report,
 
+    /// Any sub nodes.
     #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
     pub children: Vec<Progress>,
@@ -15,6 +23,9 @@ pub struct Progress {
 
 // ###### REPORT ###############################################################
 
+/// The report status.
+///
+/// This structure is serialisable with the `serde` feature.
 #[derive(Default, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -36,11 +47,15 @@ pub struct Report {
 
 // ###### STATE ################################################################
 
+/// The state of the progress.
+///
+/// This structure is serialisable with the `serde` feature.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum State {
+    /// The report is in progress.
     InProgress {
-        /// Optional length, if empty report is indeterminate.
+        /// Optional length, if empty, the report is indeterminate.
         #[cfg_attr(feature = "serde", serde(default))]
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         len: Option<u64>,
@@ -54,10 +69,16 @@ pub enum State {
         /// **Seconds** remaining.
         remaining: f32,
     },
+    /// The progress reporter is finished.
+    ///
+    /// This occurs when [`Tx::finish`] is called.
+    ///
+    /// [`Tx::finish`]: crate::Tx::finish
     Completed {
         /// Duration, in **seconds**.
         duration: f32,
     },
+    /// The progress was cancelled.
     Cancelled,
 }
 
@@ -74,15 +95,24 @@ impl Default for State {
 
 // ###### MESSAGE ##############################################################
 
+/// An accumulation message.
+///
+/// This structure is serialisable with the `serde` feature.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Message {
+    /// The severity of the message.
     pub severity: Severity,
+    /// The message.
     pub msg: String,
 }
 
+/// Message severity.
+///
+/// This structure is serialisable with the `serde` feature.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[allow(missing_docs)]
 pub enum Severity {
     Error,
     Warn,

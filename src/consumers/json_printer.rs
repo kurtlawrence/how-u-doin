@@ -1,21 +1,20 @@
 use crate::*;
 use std::{io::Write, time::Duration};
 
-pub struct JsonPrinter {
-    debounce: Duration,
-}
+/// Prints progress tree as JSON to stdout. Requires `json-printer` feature.
+///
+/// The inner value is the debounce duration.
+pub struct JsonPrinter(pub Duration);
 
 impl Default for JsonPrinter {
     fn default() -> Self {
-        Self {
-            debounce: Duration::from_millis(500),
-        }
+        JsonPrinter(Duration::from_millis(500))
     }
 }
 
 impl Consume for JsonPrinter {
     fn debounce(&self) -> Duration {
-        self.debounce
+        self.0
     }
 
     fn rpt(&mut self, _: &report::Report, _: Id, _: Option<Id>, controller: &Controller) {

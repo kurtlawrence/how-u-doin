@@ -52,6 +52,7 @@ pub(crate) fn spawn<C: Consume>(rx: Receiver<Payload>, mut consumer: C) {
     }
 }
 
+/// The progress consumer loop controller.
 #[derive(Default)]
 pub struct Controller {
     ps: FlatTree<Id, Progress_>,
@@ -137,6 +138,12 @@ impl Controller {
                         duration: e.as_secs_f32(),
                     }
                 });
+
+                // if finished, do not keep around as a parent
+                if self.last == Some(id) {
+                    self.last = None;
+                }
+
                 Some(id)
             }
 
@@ -208,6 +215,9 @@ impl Controller {
         }
     }
 
+    /// Build the progress tree.
+    ///
+    /// This is utilised by [`fetch`].
     pub fn build_progress_tree(&self) -> Vec<Progress> {
         self.ps
             .roots()
