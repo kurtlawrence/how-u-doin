@@ -1,10 +1,14 @@
 use super::*;
 
-#[cfg(feature = "termline")]
-mod term_line;
-
-#[cfg(feature = "termline")]
+#[cfg(feature = "term-line")]
+pub mod term_line;
+#[cfg(feature = "term-line")]
 pub use term_line::TermLine;
+
+#[cfg(feature = "json-printer")]
+pub mod json_printer;
+#[cfg(feature = "json-printer")]
+pub use json_printer::JsonPrinter;
 
 /// A consumer that does not do anything.
 ///
@@ -17,4 +21,6 @@ impl Consume for Noop {
     fn debounce(&self) -> Duration {
         self.0
     }
+
+    fn rpt(&mut self, _: &report::Report, _: Id, _: Option<Id>, _: &Controller) {}
 }

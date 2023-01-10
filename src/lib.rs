@@ -1,8 +1,9 @@
-use flume::{Receiver, Sender};
+use flume::Sender;
 use report::Progress;
 use std::time::{Duration, Instant};
 
 pub mod consumers;
+pub mod flat_tree;
 pub mod report;
 mod rx;
 #[cfg(test)]
@@ -11,6 +12,7 @@ mod tx;
 
 pub type Id = usize;
 
+pub use rx::Controller;
 pub use tx::{cancel, cancelled, disable, fetch, init, new, new_root, new_with_parent, reset};
 
 #[derive(Debug)]
@@ -50,9 +52,14 @@ enum Payload {
 pub trait Consume {
     /// Set the debounce timeout.
     ///
-    /// Defaults to 50 milliseconds. This is the time waited for before processing new messages.
+    /// Defaults to 50 milliseconds.
+    /// This is the time waited for before processing new messages.
     /// Only the **last** message is considered.
     fn debounce(&self) -> Duration {
         Duration::from_millis(50)
     }
+
+    fn rpt(&mut self, report: &report::Report, id: Id, parent: Option<Id>, controller: &Controller);
+
+    fn closed(&mut self, _id: Id) {}
 }

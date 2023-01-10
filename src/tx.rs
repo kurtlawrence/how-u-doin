@@ -1,5 +1,5 @@
 use super::*;
-use flume::{bounded, unbounded, Receiver, Sender};
+use flume::{bounded, unbounded, Sender};
 use parking_lot::RwLock;
 use Payload::*;
 

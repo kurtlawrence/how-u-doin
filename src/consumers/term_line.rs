@@ -1,23 +1,36 @@
 use crate::*;
-use report::*;
 use indicatif::*;
-use std::{thread::*, time::*};
-
-const MP_STATE_DELAY: Duration = Duration::from_millis(50);
+use report::*;
 
 /// A terminal line consumer.
 ///
-/// Backended by `indicatif`, this consumer will create a progress bars for each available report.
+/// Backended by [`indicatif`], this consumer will create a progress bars for each available report.
 /// It provides a simple line interface.
+///
+/// [`indicatif`]: https://github.com/console-rs/indicatif
 pub struct TermLine {
     debounce: Duration,
-    bars: BTreeMap<Id, ProgressBar>,
+    bars: flat_tree::FlatTree<Id, ProgressBar>,
     mp: MultiProgress,
 }
 
 impl Consume for TermLine {
     fn debounce(&self) -> Duration {
         self.debounce
+    }
+
+    fn rpt(&mut self, rpt: &report::Report, id: Id, parent: Option<Id>, _: &Controller) {
+        match self.bars.get(&id) {
+            Some(x) => update_bar(x, rpt),
+            None => update_bar(&self.add_bar(id, parent), rpt),
+        };
+    }
+
+    fn closed(&mut self, id: Id) {
+        if let Some(bar) = self.bars.remove(&id) {
+            bar.finish_and_clear();
+            self.mp.remove(&bar);
+        }
     }
 }
 
@@ -26,6 +39,7 @@ impl TermLine {
         Self {
             debounce: Duration::from_millis(50),
             mp: MultiProgress::new(),
+            bars: Default::default(),
         }
     }
 
@@ -36,89 +50,19 @@ impl TermLine {
         }
     }
 
-    /// Returns if the multiprogress that has been spawned matches the report structure.
-    fn mp_matches(&self, reports: Reports) -> bool {
-        fn same_state<T, U>((a, b): (&Option<T>, &Option<U>)) -> bool {
-            // XOR so a.is_none() ^ b.is_some()
-            //               true ^ true  --> false
-            //              false ^ true  --> true
-            //               true ^ false --> true
-            //              false ^ false --> false
-            a.is_some() ^ b.is_none()
+    pub fn add_bar(&mut self, id: Id, parent: Option<Id>) -> ProgressBar {
+        match parent.and_then(|x| self.bars.get(&x)).cloned() {
+            None => {
+                let bar = self.mp.add(pb());
+                self.bars.insert_root(id, bar.clone());
+                bar
+            }
+            Some(parent) => {
+                let bar = self.mp.insert_after(&parent, pb());
+                self.bars.insert(id, bar.clone());
+                bar
+            }
         }
-
-        self.bars.len() == reports.len() && self.bars.iter().zip(reports.iter()).all(same_state)
-    }
-
-    fn rebuild_and_spawn_mp(&mut self, reports: Reports) {
-        // if < delay since last rebuild, need to delay to allow for MP state to catch up.
-        let elapsed = self.last_rebuild.elapsed();
-        if elapsed < MP_STATE_DELAY {
-            sleep(MP_STATE_DELAY - elapsed);
-        }
-
-        self.last_rebuild = Instant::now();
-
-        self.finish_and_clear();
-        self.build(reports);
-    }
-
-    fn build(&mut self, reports: Reports) {
-        self.bars.clear();
-        self.cache.clear();
-
-        for report in reports {
-            self.bars.push(report.as_ref().map(|_| self.mp.add(pb())));
-            self.cache.push(Default::default());
-        }
-    }
-
-    fn finish_and_clear(&mut self) {
-        // finish all the avaialable progress bars
-        for pb in self.bars.drain(..).flatten() {
-            pb.finish();
-            self.mp.remove(&pb);
-        }
-
-        self.mp.clear().ok();
-    }
-
-    fn process_report(&mut self, idx: usize, report: &Report) {
-        let mut r = std::mem::take(&mut self.cache[idx]); // take report
-
-        let pb = &self.bars[idx].as_ref().expect("bar should exist");
-
-        let chgs = report.chg_set(&r);
-
-        // process changes
-        if chgs.label {
-            r.label = report.label.clone();
-            pb.set_prefix(r.label.clone());
-        }
-        if chgs.desc {
-            r.desc = report.desc.clone();
-            pb.set_message(r.desc.clone());
-        }
-        if chgs.len {
-            r.len = report.len;
-            pb.set_length(r.len.unwrap_or(!0));
-            set_style(&r, pb);
-        }
-        if chgs.pos {
-            r.pos = report.pos;
-            pb.set_position(r.pos);
-        }
-        if chgs.bytes {
-            r.bytes = report.bytes;
-            set_style(&r, pb);
-        }
-
-        if report.finished || r.finished {
-            pb.finish();
-            r.finished = true;
-        }
-
-        self.cache[idx] = r; // put back
     }
 }
 
@@ -128,10 +72,46 @@ impl Default for TermLine {
     }
 }
 
-fn set_style(report: &Report, pb: &ProgressBar) {
-    match report.len.is_some() {
-        true => pb.set_style(bar_style(report.bytes)),
-        false => pb.set_style(spinner_style(report.bytes)),
+pub fn update_bar(pb: &ProgressBar, rpt: &Report) {
+    let Report {
+        label,
+        desc,
+        state,
+        accums,
+    } = rpt;
+
+    pb.set_prefix(label.clone());
+    pb.set_message(desc.clone());
+
+    match state {
+        State::InProgress {
+            len,
+            pos,
+            bytes,
+            remaining: _,
+        } => {
+            pb.set_length(len.unwrap_or(!0));
+            pb.set_position(*pos);
+            match len.is_some() {
+                true => pb.set_style(bar_style(*bytes)),
+                false => pb.set_style(spinner_style(*bytes)),
+            }
+        }
+
+        State::Completed { duration } => {
+            pb.finish_with_message(format!(
+                "finished in {}",
+                HumanDuration(Duration::try_from_secs_f32(*duration).unwrap_or_default())
+            ));
+        }
+
+        State::Cancelled => {
+            pb.abandon_with_message("cancelled");
+        }
+    }
+
+    for Message { severity, msg } in accums {
+        pb.println(format!("{severity}: {msg}"));
     }
 }
 

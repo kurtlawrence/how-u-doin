@@ -1,101 +1,60 @@
-use crate::report::{Message, Report, State};
-
 use super::*;
-use flume::{unbounded, Receiver, Sender};
-use std::{collections::BTreeMap, sync::Arc};
-
-// impl ProgressRx {
-//     pub async fn consume<C: Consume>(mut self, mut consumer: C) {
-//         while let Some(Msg { id, payload }) = self.rx.recv().await {
-//             let report = self.get_or_create_report(id);
-
-//             match payload {
-//                 AddReport => (), // the act of get or create handles this
-//                 SetLabel(label) => report.label = label,
-//                 SetDesc(desc) => report.desc = desc,
-//                 SetLen(len) => report.len = len,
-//                 SetFmtBytes(x) => report.bytes = x,
-//                 Inc(ticks) => report.update_pos(report.pos.saturating_add(ticks)),
-//                 SetPos(pos) => report.update_pos(pos),
-//                 Finish => report.finished = true,
-//                 Close => self.close_report(id),
-//             }
-
-//             consumer.recv(self.reports.as_slice());
-//         }
-//     }
-
-//     /// Type helper for `self.consume(consumer)`.
-//     pub async fn consume_fn<F>(self, consumer: F)
-//     where
-//         F: FnMut(Reports),
-//     {
-//         self.consume(consumer).await
-//     }
-
-//     fn get_or_create_report(&mut self, id: Id) -> &mut Report {
-//         let i = *self.ids.entry(id).or_insert_with(|| self.reports.len());
-
-//         if i >= self.reports.len() {
-//             self.reports.resize_with(i + 1, || None);
-//         }
-
-//         if self.reports[i].is_none() {
-//             self.reports[i] = Some(Report::new(format!("Report{:02}", i + 1)));
-//         }
-
-//         self.reports[i].as_mut().expect("just checked and created")
-//     }
-
-//     /// Mark the report as None.
-//     fn close_report(&mut self, id: Id) {
-//         if let Some(i) = self.ids.get(&id).copied() {
-//             if let Some(x) = self.reports.get_mut(i) {
-//                 *x = None;
-//             }
-//         }
-//     }
-// }
-
-// impl Report {
-//     fn new(label: String) -> Self {
-//         Self {
-//             label,
-//             ..Self::default()
-//         }
-//     }
-
-//     /// Handles adding a history entry.
-// }
+use crate::{
+    flat_tree::FlatTree,
+    report::{Message, Report, State},
+};
+use flume::Receiver;
+use std::collections::BTreeSet;
+use Payload::*;
 
 pub(crate) fn spawn<C: Consume>(rx: Receiver<Payload>, mut consumer: C) {
     let debounce = consumer.debounce();
 
     let mut controller = Controller::default();
+    let mut chgd_buf = BTreeSet::new();
+    let mut last = Instant::now();
 
     loop {
         if rx.is_disconnected() {
             break; // static tx dropped, exit receiver loop
         }
 
-        if debounce.is_zero() {
-            if let Ok(x) = rx.recv() {
-                controller.process(x, &mut consumer);
-            }
+        // use a timeout to avoid thrashing the loop
+        let x = if debounce.is_zero() {
+            rx.recv().ok()
         } else {
-            std::thread::sleep(debounce);
+            rx.recv_timeout(debounce).ok()
+        };
 
-            if let Some(last) = rx.drain().last() {
-                controller.process(last, &mut consumer);
+        if let Some(x) = x.and_then(|x| controller.process(x)) {
+            chgd_buf.insert(x);
+        }
+
+        if last.elapsed() >= debounce {
+            // debounce duration has occurred; can update the consumer with any changes
+
+            while let Some(id) = chgd_buf.pop_first() {
+                if let Some(Progress_ {
+                    rpt,
+                    children: _,
+                    parent,
+                    started: _,
+                }) = controller.ps.get(&id)
+                {
+                    consumer.rpt(rpt, id, *parent, &controller);
+                } else {
+                    consumer.closed(id);
+                }
             }
+
+            last = Instant::now();
         }
     }
 }
 
 #[derive(Default)]
-struct Controller {
-    ps: BTreeMap<Id, Progress_>,
-    roots: Vec<Id>,
+pub struct Controller {
+    ps: FlatTree<Id, Progress_>,
     last: Option<Id>,
     cancelled: bool,
     nextid: Id,
@@ -108,73 +67,68 @@ impl Controller {
         id
     }
 
-    fn process<C: Consume>(&mut self, payload: Payload, consumer: &mut C) {
-        use Payload::*;
-
+    fn process(&mut self, payload: Payload) -> Option<Id> {
         match payload {
             AddReport(None, tx) => {
-                let id = self.next_id();
-
-                match self.last {
-                    Some(parent) => self.add_root_or_parent(parent, id),
-                    None => self.roots.push(id),
-                }
-
-                self.add_rpt(id);
+                let id = match self.last {
+                    Some(parent) => self.add_child(parent),
+                    None => self.add_root(),
+                };
 
                 tx.send(id).ok();
+                Some(id)
             }
 
             AddReport(Some(parent), tx) => {
-                let id = self.next_id();
-
-                self.add_root_or_parent(parent, id);
-
-                self.add_rpt(id);
-
+                let id = self.add_child(parent);
                 tx.send(id).ok();
+                Some(id)
             }
 
             AddRootReport(tx) => {
-                let id = self.next_id();
-
-                self.roots.push(id);
-
-                self.add_rpt(id);
-
+                let id = self.add_root();
                 tx.send(id).ok();
+                Some(id)
             }
 
             Fetch(tx) => {
-                tx.send(self.build_public_prg()).ok();
+                tx.send(self.build_progress_tree()).ok();
+                None
             }
 
             SetLabel(id, label) => {
                 self.set(id, |x, _| x.label = label);
+                Some(id)
             }
 
             SetDesc(id, d) => {
                 self.set(id, |x, _| x.desc = d);
+                Some(id)
             }
 
             SetLen(id, len) => {
                 self.set(id, |x, _| x.set_len(len));
+                Some(id)
             }
 
             Inc(id, by) => {
                 self.set(id, |x, e| x.inc_pos(by, e));
+                Some(id)
             }
 
             SetPos(id, pos) => {
                 self.set(id, |x, e| x.update_pos(pos, e));
+                Some(id)
             }
 
             SetFmtBytes(id, y) => {
                 self.set(id, |x, _| x.set_fmt_as_bytes(y));
+                Some(id)
             }
 
             Accum(id, severity, msg) => {
                 self.set(id, |x, _| x.accums.push(Message { severity, msg }));
+                Some(id)
             }
 
             Finish(id) => {
@@ -183,46 +137,69 @@ impl Controller {
                         duration: e.as_secs_f32(),
                     }
                 });
+                Some(id)
             }
 
             Close(id) => {
                 self.ps.remove(&id);
-                if let Some(idx) = self
-                    .roots
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, x)| id.eq(x).then_some(i))
-                {
-                    self.roots.remove(idx);
-                }
 
                 if self.last == Some(id) {
                     self.last = None;
                 }
+
+                Some(id)
             }
 
             Cancel => {
                 self.cancelled = true;
+                None
             }
 
             Cancelled(tx) => {
                 tx.send(self.cancelled).ok();
+                None
             }
 
-            Reset => *self = Self::default(),
+            Reset => {
+                *self = Self::default();
+                None
+            }
         }
     }
 
-    fn add_root_or_parent(&mut self, parent: Id, child: Id) {
-        match self.ps.get_mut(&parent) {
-            Some(p) => p.children.push(child),
-            None => self.roots.push(child),
-        }
-    }
-
-    fn add_rpt(&mut self, id: Id) {
-        self.ps.insert(id, Progress_::new());
+    fn add_root(&mut self) -> Id {
+        let id = self.next_id();
+        self.ps.insert_root(
+            id,
+            Progress_ {
+                parent: None,
+                ..Progress_::root()
+            },
+        );
         self.last = Some(id);
+        id
+    }
+
+    fn add_child(&mut self, parent: Id) -> Id {
+        let id = self.next_id();
+        match self.ps.get_mut(&parent) {
+            Some(p) => {
+                p.children.push(id);
+                self.ps.insert(
+                    id,
+                    Progress_ {
+                        parent: Some(parent),
+                        ..Progress_::root()
+                    },
+                );
+            }
+            None => {
+                self.ps.insert_root(id, Progress_::root());
+            }
+        }
+
+        self.last = Some(id);
+        id
     }
 
     fn set<F: FnOnce(&mut Report, Duration)>(&mut self, id: Id, f: F) {
@@ -231,10 +208,10 @@ impl Controller {
         }
     }
 
-    fn build_public_prg(&self) -> Vec<Progress> {
-        self.roots
-            .iter()
-            .filter_map(|id| self.build_public_prg_(id))
+    pub fn build_progress_tree(&self) -> Vec<Progress> {
+        self.ps
+            .roots()
+            .filter_map(|(id, _)| self.build_public_prg_(id))
             .collect()
     }
 
@@ -243,6 +220,7 @@ impl Controller {
             |Progress_ {
                  rpt,
                  children,
+                 parent: _,
                  started: _,
              }| {
                 let children = children
@@ -262,14 +240,16 @@ impl Controller {
 struct Progress_ {
     rpt: Report,
     children: Vec<Id>,
+    parent: Option<Id>,
     started: Instant,
 }
 
 impl Progress_ {
-    fn new() -> Self {
+    fn root() -> Self {
         Self {
             rpt: Default::default(),
             children: Default::default(),
+            parent: None,
             started: Instant::now(),
         }
     }

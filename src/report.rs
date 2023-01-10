@@ -1,3 +1,5 @@
+use std::fmt;
+
 // ###### PROGRESS #############################################################
 
 #[derive(Debug, Clone, PartialEq)]
@@ -86,4 +88,14 @@ pub enum Severity {
     Warn,
     #[default]
     Info,
+}
+
+impl fmt::Display for Severity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Error => write!(f, "ERROR"),
+            Self::Warn => write!(f, "WARN"),
+            Self::Info => write!(f, "INFO"),
+        }
+    }
 }
