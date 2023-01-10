@@ -7,6 +7,8 @@ use report::*;
 /// Backended by [`indicatif`], this consumer will create a progress bars for each available report.
 /// It provides a simple line interface.
 ///
+/// ![Screenshot from 2023-01-10 15-36-43](https://user-images.githubusercontent.com/13831379/211470141-2879f70a-42b5-49ad-894a-3a0bb9c57bac.png)
+///
 /// [`indicatif`]: https://github.com/console-rs/indicatif
 pub struct TermLine {
     debounce: Duration,
