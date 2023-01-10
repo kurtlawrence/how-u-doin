@@ -257,42 +257,37 @@ impl Progress_ {
 
 impl Report {
     fn set_len(&mut self, len_: Option<u64>) {
-        match &mut self.state {
-            State::InProgress { len, .. } => *len = len_,
-            _ => (),
+        if let State::InProgress { len, .. } = &mut self.state {
+            *len = len_
         }
     }
 
     fn set_fmt_as_bytes(&mut self, x: bool) {
-        match &mut self.state {
-            State::InProgress { bytes, .. } => *bytes = x,
-            _ => (),
+        if let State::InProgress { bytes, .. } = &mut self.state {
+            *bytes = x
         }
     }
 
     fn inc_pos(&mut self, ticks: u64, elapsed: Duration) {
-        match &self.state {
-            State::InProgress { pos, .. } => self.update_pos(pos.saturating_add(ticks), elapsed),
-            _ => (),
+        if let State::InProgress { pos, .. } = &self.state {
+            self.update_pos(pos.saturating_add(ticks), elapsed)
         }
     }
 
     fn update_pos(&mut self, pos_: u64, elapsed: Duration) {
-        match &mut self.state {
-            State::InProgress {
-                len,
-                pos,
-                remaining,
-                ..
-            } => {
-                *pos = len.clone().map(|len| len.min(pos_)).unwrap_or(pos_);
+        if let State::InProgress {
+            len,
+            pos,
+            remaining,
+            ..
+        } = &mut self.state
+        {
+            *pos = len.map(|len| len.min(pos_)).unwrap_or(pos_);
 
-                if let Some(len) = *len {
-                    let rate = elapsed.as_secs_f32() / *pos as f32;
-                    *remaining = (len - *pos) as f32 * rate;
-                }
+            if let Some(len) = *len {
+                let rate = elapsed.as_secs_f32() / *pos as f32;
+                *remaining = (len - *pos) as f32 * rate;
             }
-            _ => (),
         }
     }
 }

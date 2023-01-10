@@ -25,7 +25,7 @@ pub fn new_with_parent(parent: Id) -> Tx {
 }
 
 pub fn new_root() -> Tx {
-    new_(|x| AddRootReport(x))
+    new_(AddRootReport)
 }
 
 fn new_<F: FnOnce(Sender<Id>) -> Payload>(f: F) -> Tx {
