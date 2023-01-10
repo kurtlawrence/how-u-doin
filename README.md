@@ -3,6 +3,8 @@
 Progress reporting abstraction for Rust
 
 `howudoin` intends to make producing and consuming progress reports simple and ergonomic.
+Importantly, it separates the progress _producers_ from the _consumer_, allowing progress reports
+to be generated from disparate sections in a system.
 
 ```rust
 // initialise a consumer loop
