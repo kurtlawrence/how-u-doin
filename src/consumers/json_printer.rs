@@ -4,6 +4,9 @@ use std::{io::Write, time::Duration};
 /// Prints progress tree as JSON to stdout. Requires `json-printer` feature.
 ///
 /// The inner value is the debounce duration.
+///
+/// To see an example using `JsonPrinter`, `cargo run --all-features --example json-printer` can be run
+/// in the repository.
 pub struct JsonPrinter(pub Duration);
 
 impl Default for JsonPrinter {

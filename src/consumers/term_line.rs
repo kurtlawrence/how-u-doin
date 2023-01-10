@@ -9,6 +9,9 @@ use report::*;
 ///
 /// ![Screenshot from 2023-01-10 15-36-43](https://user-images.githubusercontent.com/13831379/211470141-2879f70a-42b5-49ad-894a-3a0bb9c57bac.png)
 ///
+/// To see an example using `TermLine`, `cargo run --all-features --example term-line` can be run
+/// in the repository.
+///
 /// [`indicatif`]: https://github.com/console-rs/indicatif
 pub struct TermLine {
     debounce: Duration,
