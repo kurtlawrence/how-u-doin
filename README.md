@@ -40,7 +40,7 @@ Take a look at the [examples](https://github.com/kdr-aus/how-u-doin/tree/main/ex
 
 ## Example terminal consumer
 
-![Screenshot from 2023-01-10 15-36-43](https://user-images.githubusercontent.com/13831379/211470141-2879f70a-42b5-49ad-894a-3a0bb9c57bac.png)
+![term-line](https://user-images.githubusercontent.com/13831379/211681673-7e0898b7-dded-4121-8876-cf261c2a124d.gif)
 
 ## Support
 
