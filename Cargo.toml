@@ -24,6 +24,14 @@ parking_lot = "0.12"
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 
+[[example]]
+name = "term-line"
+required-features = ["term-line"]
+
+[[example]]
+name = "json-printer"
+required-features = ["json-printer"]
+
 # docs.rs-specific configuration
 [package.metadata.docs.rs]
 # document all features
