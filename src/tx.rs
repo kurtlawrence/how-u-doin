@@ -1,6 +1,6 @@
 use super::*;
 use flume::{bounded, unbounded, Sender};
-use parking_lot::{lock_api::RawRwLock, RwLock};
+use parking_lot::RwLock;
 use Payload::*;
 
 static TX: StaticTx = StaticTx::none();
@@ -115,7 +115,7 @@ pub struct StaticTx(RwLock<Option<Sender<Payload>>>);
 
 impl StaticTx {
     const fn none() -> Self {
-        StaticTx(RwLock::const_new(parking_lot::RawRwLock::INIT, None))
+        StaticTx(parking_lot::const_rwlock(None))
     }
 
     fn set_tx(&self, tx: Sender<Payload>) {
