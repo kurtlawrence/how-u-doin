@@ -115,7 +115,7 @@ pub struct StaticTx(RwLock<Option<Sender<Payload>>>);
 
 impl StaticTx {
     const fn none() -> Self {
-        StaticTx(RwLock::new(None))
+        StaticTx(parking_lot::const_rwlock(None))
     }
 
     fn set_tx(&self, tx: Sender<Payload>) {
