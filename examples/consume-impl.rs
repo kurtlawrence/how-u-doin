@@ -22,6 +22,7 @@ impl Consume for SimplePrinter {
                 remaining,
             } => {
                 let done = *pos as f32 / len.unwrap_or(0) as f32 * 100.;
+                let remaining = remaining.unwrap_or(f32::INFINITY);
                 println!("{done:.1}% - eta {remaining}s");
             }
             State::Completed { duration } => {

@@ -296,7 +296,7 @@ impl Report {
 
             if let Some(len) = *len {
                 let rate = elapsed.as_secs_f32() / *pos as f32;
-                *remaining = (len - *pos) as f32 * rate;
+                *remaining = Some((len - *pos) as f32 * rate);
             }
         }
     }

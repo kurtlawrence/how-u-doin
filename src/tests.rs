@@ -9,7 +9,7 @@ fn reset_rems(xs: Vec<Progress>) -> Vec<Progress> {
     xs.into_iter()
         .map(|mut x| {
             match &mut x.report.state {
-                State::InProgress { remaining, .. } => *remaining = 1.,
+                State::InProgress { remaining, .. } => *remaining = Some(1.),
                 State::Completed { duration } => *duration = 1.,
                 _ => (),
             }
@@ -48,7 +48,7 @@ fn report_creation_smoke_test() {
                         len: None,
                         pos: 0,
                         bytes: false,
-                        remaining: f32::INFINITY,
+                        remaining: None,
                     },
                     accums: vec![]
                 },
@@ -61,7 +61,7 @@ fn report_creation_smoke_test() {
                                 len: None,
                                 pos: 0,
                                 bytes: false,
-                                remaining: f32::INFINITY,
+                                remaining: None,
                             },
                             accums: vec![]
                         },
@@ -75,7 +75,7 @@ fn report_creation_smoke_test() {
                                 len: None,
                                 pos: 0,
                                 bytes: false,
-                                remaining: f32::INFINITY,
+                                remaining: None,
                             },
                             accums: vec![]
                         },
@@ -91,7 +91,7 @@ fn report_creation_smoke_test() {
                         len: None,
                         pos: 0,
                         bytes: false,
-                        remaining: f32::INFINITY
+                        remaining: None,
                     },
                     accums: vec![]
                 },
@@ -122,7 +122,7 @@ fn tx_api() {
                     len: Some(100),
                     pos: 6,
                     bytes: true,
-                    remaining: 1.
+                    remaining: Some(1.)
                 },
                 accums: vec![Message {
                     severity: Severity::Error,
@@ -146,7 +146,7 @@ fn tx_api() {
                     len: Some(100),
                     pos: 50,
                     bytes: true,
-                    remaining: 1.
+                    remaining: Some(1.)
                 },
                 accums: vec![
                     Message {

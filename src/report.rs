@@ -67,7 +67,7 @@ pub enum State {
         bytes: bool,
 
         /// **Seconds** remaining.
-        remaining: f32,
+        remaining: Option<f32>,
     },
     /// The progress reporter is finished.
     ///
@@ -88,7 +88,7 @@ impl Default for State {
             len: None,
             pos: 0,
             bytes: false,
-            remaining: f32::INFINITY,
+            remaining: None,
         }
     }
 }
